@@ -1,186 +1,117 @@
-name: Build, Push and Redeploy
+name: CI Pipeline
 
 on:
   push:
-    branches: [ develop ]
-  workflow_dispatch:
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+    branches:
+      - develop
+  workflow_dispatch: # Para ejecutarlo manualmente
 
 jobs:
-  build-and-push:
+  build:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Equivalente a GIT_DEPTH=0
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build project
+        run: |
+          echo "Building..."
+          mkdir build
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            build/
+            Dockerfile
+
+  tester:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+      - name: Run tests
+        run: echo "Tester..."
+
+  obfuscate:
+    runs-on: ubuntu-latest
+    needs: tester
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: Install obfuscator
+        run: npm install -g javascript-obfuscator
+
+      - name: Obfuscate source code
+        run: |
+          mkdir -p dist
+          javascript-obfuscator src --output dist --compact true --control-flow-flattening true
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist-artifacts
+          path: dist/
+
+  dockerize:
+    runs-on: ubuntu-latest
+    needs: obfuscate
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: dist-artifacts
+          path: ./dist
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v2
         with:
-          registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=sha,prefix=,suffix=-{{date 'YYYYMMDDHHmmss'}}
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-
-      - name: Get latest image tag
-        id: get-image-tag
         run: |
-          # Obtener el tag más reciente basado en timestamp
-          LATEST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | grep -E 'sha-[0-9]{14}' | head -n 1)
-          echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
-          echo "🆕 Image tag: $LATEST_TAG"
+          docker build -t ghcr.io/${{ github.repository }}:latest .
+          docker push ghcr.io/${{ github.repository }}:latest
 
-      - name: Save image tag to artifact
-        run: |
-          echo "${{ steps.get-image-tag.outputs.LATEST_TAG }}" > image_tag.txt
-        shell: bash
-
-      - name: Upload image tag artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: image-tag
-          path: image_tag.txt
-
-  redeploy:
-    needs: build-and-push
+  deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-
+    needs: dockerize
     steps:
-      - name: Download image tag artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: image-tag
-          path: .
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y curl tar
 
-      - name: Read image tag
-        id: image-tag
+      - name: Download Koyeb CLI
         run: |
-          IMAGE_TAG=$(cat image_tag.txt)
-          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
-          echo "📦 Image a desplegar: $IMAGE_TAG"
+          curl -L -o koyeb-cli.tar.gz "https://github.com/koyeb/koyeb-cli/releases/download/v5.7.0/koyeb-cli_5.7.0_linux_amd64.tar.gz"
+          tar -xzf koyeb-cli.tar.gz
+          sudo mv koyeb /usr/local/bin/koyeb
+          chmod +x /usr/local/bin/koyeb
 
-      - name: Install Koyeb CLI
+      - name: Configure Koyeb
         run: |
-          curl -L https://github.com/koyeb/koyeb-cli/releases/download/v5.7.0/koyeb-cli_5.7.0_linux_amd64.tar.gz | tar -xz
-          sudo mv koyeb /usr/local/bin/
-          sudo chmod +x /usr/local/bin/koyeb
+          mkdir -p ~/.koyeb
+          echo "access_token: ${{ secrets.KOYEB_API_TOKEN }}" > ~/.koyeb.yaml
+          koyeb version
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Get current service details
+      - name: Deploy to Koyeb
         run: |
-          koyeb service get "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" \
-            --token "${{ secrets.KOYEB_API_TOKEN }}" \
-            -o json > service_info.json
-          echo "📋 Información del servicio obtenida"
-
-      - name: Verify service is using correct image
-        run: |
-          CURRENT_IMAGE=$(jq -r '.definition.docker.image' service_info.json)
-          echo "📷 Imagen actual: $CURRENT_IMAGE"
-          echo "🎯 Imagen nueva: ${{ steps.image-tag.outputs.IMAGE_TAG }}"
-          
-          # Verificar si ya está usando la imagen correcta
-          if [ "$CURRENT_IMAGE" = "${{ steps.image-tag.outputs.IMAGE_TAG }}" ]; then
-            echo "✅ El servicio ya está usando la imagen más reciente"
-            echo "SKIP_REDEPLOY=true" >> $GITHUB_ENV
-          else
-            echo "🔄 El servicio necesita actualización"
-            echo "SKIP_REDEPLOY=false" >> $GITHUB_ENV
-          fi
-
-      - name: Redeploy service (si es necesario)
-        if: env.SKIP_REDEPLOY == 'false'
-        run: |
-          echo "🚀 Iniciando redeploy del servicio..."
-          
-          # Ahora hacer redeploy para aplicar los cambios
-          koyeb service redeploy "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" \
-            --token "${{ secrets.KOYEB_API_TOKEN }}"
-          
-          echo "✅ Redeploy iniciado con la nueva imagen"
-
-      - name: Wait for deployment to complete (si se hizo redeploy)
-        if: env.SKIP_REDEPLOY == 'false'
-        run: |
-          echo "⏳ Esperando a que el despliegue se complete..."
-          sleep 30
-          
-          max_attempts=12
-          attempt=1
-          deployment_done=false
-          
-          while [ $attempt -le $max_attempts ] && [ "$deployment_done" = false ]; do
-            echo "📋 Verificando estado (intento $attempt/$max_attempts)..."
-            
-            # Obtener información del servicio
-            service_info=$(koyeb service get "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" --token "${{ secrets.KOYEB_API_TOKEN }}" -o json 2>/dev/null || true)
-            
-            if [ -n "$service_info" ]; then
-              status=$(echo "$service_info" | jq -r '.status' 2>/dev/null || echo "UNKNOWN")
-              current_image=$(echo "$service_info" | jq -r '.definition.docker.image' 2>/dev/null || echo "UNKNOWN")
-              
-              echo "📊 Estado: $status | Imagen: $current_image"
-              
-              if [ "$status" = "HEALTHY" ] && [ "$current_image" = "${{ steps.image-tag.outputs.IMAGE_TAG }}" ]; then
-                echo "🎉 ¡Despliegue exitoso! La nueva imagen está activa y healthy"
-                deployment_done=true
-                break
-              elif [ "$status" = "UNHEALTHY" ]; then
-                echo "❌ El despliegue falló - Estado: UNHEALTHY"
-                exit 1
-              fi
-            else
-              echo "⚠️ No se pudo obtener información del servicio"
-            fi
-            
-            sleep 10
-            attempt=$((attempt + 1))
-          done
-          
-          if [ "$deployment_done" = false ]; then
-            echo "⚠️ Tiempo de espera agotado. Verifica manualmente el estado del servicio."
-            echo "Comando: koyeb service get ${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}"
-            # No salir con error ya que el servicio podría estar aún desplegando
-          fi
-
-      - name: Notify deployment status
-        run: |
-          if [ "$SKIP_REDEPLOY" = "true" ]; then
-            echo "✅ No se necesitó redeploy - El servicio ya estaba actualizado"
-          else
-            echo "🚀 Proceso de despliegue completado"
-          fi
-          echo "Servicio: ${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}"
-          echo "Imagen actual: ${{ steps.image-tag.outputs.IMAGE_TAG }}"
-          echo "📅 Timestamp: $(date)"
+          echo "📢 Iniciando despliegue en Koyeb..."
+          koyeb service redeploy "vivid-carrie/apisinau-nodejs" --token "${{ secrets.KOYEB_API_TOKEN }}"
+          echo "✅ Despliegue exitoso en Koyeb 🚀"

@@ -110,11 +110,11 @@ jobs:
 
       - name: Redeploy service
         run: |
-            koyeb service redeploy "${{ env.KOYEB_BACKEND_SERVICE_NAME }}" --token "${{ secrets.KOYEB_API_TOKEN }}"
-            echo "✅ Redeploy iniciado para: ${{ env.KOYEB_BACKEND_SERVICE_NAME }}"
+            koyeb service redeploy "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" --token "${{ secrets.KOYEB_API_TOKEN }}"
+            echo "✅ Redeploy iniciado para: ${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}"
 
       - name: Check deployment status
         run: |
           echo "🕐 Esperando para verificar estado..."
           sleep 15
-          koyeb service get "${{ env.KOYEB_BACKEND_SERVICE_NAME }}" --token "${{ secrets.KOYEB_API_TOKEN }}" -o json | jq '.status' || echo "ℹ️  Servicio en proceso de despliegue"
+          koyeb service get "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" --token "${{ secrets.KOYEB_API_TOKEN }}" -o json | jq '.status' || echo "ℹ️  Servicio en proceso de despliegue"

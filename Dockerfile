@@ -1,6 +1,9 @@
 # 🔹 1️⃣ Usa una imagen oficial de Node.js como base
 FROM node:18-alpine
 
+# Instalar TypeScript globalmente
+RUN npm install -g typescript
+
 # Instala Koyeb CLI
 RUN curl -sSL https://get.koyeb.app | sh
 

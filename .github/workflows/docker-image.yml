@@ -97,57 +97,32 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy-to-koyeb:
-    needs: build-and-push
+  deploy:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Koyeb CLI from GitHub Release
-        run: |
-          # Descargar la última versión del CLI desde GitHub
-          echo "📦 Descargando Koyeb CLI..."
-          curl -sSL https://github.com/koyeb/koyeb-cli/releases/latest/download/koyeb-cli_linux_amd64 -o koyeb
-          chmod +x koyeb
-          sudo mv koyeb /usr/local/bin/koyeb
-          echo "✅ Koyeb CLI instalado correctamente"
-          koyeb version
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      - name: Login to Koyeb
-        run: |
-          echo "🔐 Autenticando con Koyeb..."
-          koyeb auth login --token "${{ secrets.KOYEB_API_TOKEN }}"
-          
-      - name: Deploy to Koyeb
-        run: |
-          # Desplegar en Koyeb
-          if $HOME/.koyeb/bin/koyeb app get "${{ env.KOYEB_BACKEND_SERVICE_NAME }}" > /dev/null 2>&1; then
-            echo "🔄 Actualizando aplicación existente en Koyeb"
-            $HOME/.koyeb/bin/koyeb service update \
-              --app "${{ env.KOYEB_BACKEND_SERVICE_NAME }}" \
-              --service "${{ env.KOYEB_BACKEND_SERVICE_NAME }}" \
-              --image "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}" \
-              --ports 3000:http \
-              --routes /:3000 \
-              --env "TURSO_DATABASE_URL=${{ secrets.TURSO_DATABASE_URL }}" \
-              --env "TURSO_AUTH_TOKEN=${{ secrets.TURSO_AUTH_TOKEN }}" \
-              --env "NODE_ENV=production"
-          else
-            echo "🚀 Creando nueva aplicación en Koyeb"
-            $HOME/.koyeb/bin/koyeb app init "${{ env.KOYEB_BACKEND_SERVICE_NAME }}" \
-              --docker "${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }}" \
-              --ports 3000:http \
-              --routes /:3000 \
-              --env "TURSO_DATABASE_URL=${{ secrets.TURSO_DATABASE_URL }}" \
-              --env "TURSO_AUTH_TOKEN=${{ secrets.TURSO_AUTH_TOKEN }}" \
-              --env "NODE_ENV=production" \
-              --regions fra
-          fi
-
-      - name: Verify deployment
-        run: |
-          echo "✅ Despliegue completado"
-          echo "🌐 URL de la aplicación: https://${{ env.KOYEB_BACKEND_SERVICE_NAME }}.koyeb.app"
+      - name: Deploy to Koyeb using Official Action
+        uses: koyeb-community/koyeb-action@v2
+        with:
+          koyeb_token: ${{ secrets.KOYEB_API_TOKEN }}
+          service_name: ${{ env.KOYEB_BACKEND_SERVICE_NAME }}
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          app_name: apisinau-nodejs
+          ports: 3000:http
+          routes: /:3000
+          env: |
+            NODE_ENV=production
+            TURSO_DATABASE_URL=${{ secrets.TURSO_DATABASE_URL }}
+            TURSO_AUTH_TOKEN=${{ secrets.TURSO_AUTH_TOKEN }}

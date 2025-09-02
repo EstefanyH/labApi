@@ -1,5 +1,5 @@
 {
-  "name": "hexagonal-basic",
+  "name": "api-lab",
   "version": "1.0.0",
   "scripts": {
     "dev": "ts-node src/index.ts",

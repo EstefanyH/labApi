@@ -97,24 +97,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-deploy-to-koyeb:
-  needs: build-and-push
-  runs-on: ubuntu-latest
-  if: github.event_name != 'pull_request'
-  
-  steps:
-    - name: Deploy to Koyeb using CLI
-      run: |
-        # Instalar CLI de Koyeb
-        curl -sSL https://get.koyeb.app | sh
-        
-        # Autenticar
-        $HOME/.koyeb/bin/koyeb auth login --token ${{ secrets.KOYEB_API_TOKEN }}
-        
-        # Desplegar
-        $HOME/.koyeb/bin/koyeb app deploy \
-          --app ${{ env.KOYEB_BACKEND_SERVICE_NAME }} \
-          --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }} \
-          --env TURSO_DATABASE_URL=${{ secrets.TURSO_DATABASE_URL }} \
-          --env TURSO_AUTH_TOKEN=${{ secrets.TURSO_AUTH_TOKEN }} \
-          --env NODE_ENV=production
+  deploy-to-koyeb:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
+    
+    steps:
+      - name: Deploy to Koyeb using CLI
+        run: |
+          # Instalar CLI de Koyeb
+          curl -sSL https://get.koyeb.app | sh
+          
+          # Autenticar
+          $HOME/.koyeb/bin/koyeb auth login --token ${{ secrets.KOYEB_API_TOKEN }}
+          
+          # Desplegar
+          $HOME/.koyeb/bin/koyeb app deploy \
+            --app ${{ env.KOYEB_BACKEND_SERVICE_NAME }} \
+            --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:sha-${{ github.sha }} \
+            --env TURSO_DATABASE_URL=${{ secrets.TURSO_DATABASE_URL }} \
+            --env TURSO_AUTH_TOKEN=${{ secrets.TURSO_AUTH_TOKEN }} \
+            --env NODE_ENV=production

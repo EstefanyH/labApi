@@ -5,12 +5,12 @@ export const loginRequestSchema = {
     email: {
       type: 'string',
       format: 'email',
-      example: 'admin@example.com'
+      example: '41111111'
     },
     password: {
       type: 'string',
       format: 'password',
-      example: 'password123'
+      example: '41111111'
     }
   }
 };

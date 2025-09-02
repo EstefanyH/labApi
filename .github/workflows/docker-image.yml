@@ -93,12 +93,11 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and push Docker image
-        run: |
-          IMAGE_NAME=ghcr.io/${{ format('{0}', github.repository) }}:latest
-          IMAGE_NAME=$(echo "$IMAGE_NAME" | tr '[:upper:]' '[:lower:]')
-          echo "Using image: $IMAGE_NAME"
-          docker build -t $IMAGE_NAME .
-          docker push $IMAGE_NAME
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository }}/labapi:latest
 
   deploy:
     runs-on: ubuntu-latest

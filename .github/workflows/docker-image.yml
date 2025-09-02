@@ -104,7 +104,7 @@ jobs:
     steps:
       - name: Install Koyeb CLI
         run: |
-            curl -L https://github.com/koyeb/koyeb-cli/releases/download/v5.4.1/koyeb-cli_5.4.1_linux_amd64.tar.gz | tar -xz
+            curl -L https://github.com/koyeb/koyeb-cli/releases/download/v5.7.0/koyeb-cli_5.7.0_linux_amd64.tar.gz | tar -xz
             sudo mv koyeb /usr/local/bin/
             sudo chmod +x /usr/local/bin/koyeb
 

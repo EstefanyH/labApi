@@ -97,33 +97,24 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
+  redeploy:
     needs: build-and-push
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Install Koyeb CLI
+        run: |
+            curl -L https://github.com/koyeb/koyeb-cli/releases/download/v5.4.1/koyeb-cli_5.4.1_linux_amd64.tar.gz | tar -xz
+            sudo mv koyeb /usr/local/bin/
+            sudo chmod +x /usr/local/bin/koyeb
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          push: true
-          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+      - name: Redeploy service
+        run: |
+            koyeb service redeploy "${{ env.KOYEB_BACKEND_SERVICE_NAME }}" --token "${{ secrets.KOYEB_API_TOKEN }}"
+            echo "✅ Redeploy iniciado para: ${{ env.KOYEB_BACKEND_SERVICE_NAME }}"
 
-      - name: Deploy to Koyeb using Official Action
-        uses: koyeb-community/koyeb-action@v2
-        with:
-          koyeb_token: ${{ secrets.KOYEB_API_TOKEN }}
-          service_name: ${{ env.KOYEB_BACKEND_SERVICE_NAME }}
-          image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-          app_name: apisinau-nodejs
-          ports: 3000:http
-          routes: /:3000
-          env: |
-            NODE_ENV=production
-            TURSO_DATABASE_URL=${{ secrets.TURSO_DATABASE_URL }}
-            TURSO_AUTH_TOKEN=${{ secrets.TURSO_AUTH_TOKEN }}
+      - name: Check deployment status
+        run: |
+          echo "🕐 Esperando para verificar estado..."
+          sleep 15
+          koyeb service get "${{ env.KOYEB_BACKEND_SERVICE_NAME }}" --token "${{ secrets.KOYEB_API_TOKEN }}" -o json | jq '.status' || echo "ℹ️  Servicio en proceso de despliegue"

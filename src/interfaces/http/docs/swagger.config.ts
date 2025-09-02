@@ -2,6 +2,21 @@ import swaggerJSDoc from 'swagger-jsdoc';
 import { userSchema, userResponseSchema } from './schemas/user.schema';
 import { loginRequestSchema, loginResponseSchema } from './schemas/auth.schema';
 
+
+// Determinar la URL base según el entorno
+const getServerUrl = (): string => {
+  const env = process.env.NODE_ENV || 'development';
+  const port = process.env.PORT || '3000';
+  
+  if (env === 'production') {
+    return process.env.FRONTEND_URL || 'http://localhost:3000';
+  }
+  
+  // Para desarrollo y otros entornos
+  return `http://localhost:${port}`;
+};
+
+
 const swaggerDefinition = {
   openapi: '3.0.0',
   info: {
@@ -13,11 +28,18 @@ const swaggerDefinition = {
       email: 'tu@email.com'
     }
   },
-  servers: [
+   servers: [
     {
+      url: getServerUrl(),
+      description: process.env.NODE_ENV === 'production' 
+        ? 'Servidor de producción' 
+        : 'Servidor local'
+    },
+    // Servidor adicional para desarrollo si estás en producción
+    ...(process.env.NODE_ENV === 'production' ? [{
       url: 'http://localhost:3000',
-      description: 'Servidor local'
-    }
+      description: 'Servidor local (desarrollo)'
+    }] : [])
   ],
   components: {
     securitySchemes: {

@@ -106,19 +106,21 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Install Koyeb CLI
+      - name: Install Koyeb CLI from GitHub Release
         run: |
-          # Descargar e instalar Koyeb CLI
-          curl -sSL https://get.koyeb.app -o install-koyeb.sh
-          chmod +x install-koyeb.sh
-          ./install-koyeb.sh
-          echo "$HOME/.koyeb/bin" >> $GITHUB_PATH
+          # Descargar la última versión del CLI desde GitHub
+          echo "📦 Descargando Koyeb CLI..."
+          curl -sSL https://github.com/koyeb/koyeb-cli/releases/latest/download/koyeb-cli_linux_amd64 -o koyeb
+          chmod +x koyeb
+          sudo mv koyeb /usr/local/bin/koyeb
+          echo "✅ Koyeb CLI instalado correctamente"
+          koyeb version
 
-      - name: Configure Koyeb CLI
+      - name: Login to Koyeb
         run: |
-          # Configurar autenticación
-          $HOME/.koyeb/bin/koyeb auth login --token "${{ secrets.KOYEB_API_TOKEN }}"
-
+          echo "🔐 Autenticando con Koyeb..."
+          koyeb auth login --token "${{ secrets.KOYEB_API_TOKEN }}"
+          
       - name: Deploy to Koyeb
         run: |
           # Desplegar en Koyeb

@@ -9,7 +9,7 @@ const getServerUrl = (): string => {
   const port = process.env.PORT || '3000';
   
   if (env === 'production') {
-    return process.env.FRONTEND_URL || 'http://localhost:3000';
+    return process.env.FRONTEND_URL || 'https://vivid-carrie-hache-b27df325.koyeb.app';
   }
   
   // Para desarrollo y otros entornos

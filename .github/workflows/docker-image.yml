@@ -1,61 +1,17 @@
-name: Build and Push Docker Image
+name: Build, Push and Redeploy
 
 on:
   push:
-    branches: [ main, master, develop ]
-    tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ main, master, develop ]
+    branches: [ develop ]
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-      
-      - name: Debug - Verificar variables de entorno
-        run: |
-          echo "🔍 Verificando variables de entorno:"
-          echo "TURSO_DATABASE_URL está definida: $([ -n \"$TURSO_DATABASE_URL\" ] && echo "✅ SÍ" || echo "❌ NO")"
-          echo "TURSO_AUTH_TOKEN está definida: $([ -n \"$TURSO_AUTH_TOKEN\" ] && echo "✅ SÍ" || echo "❌ NO")"
-          
-          # Mostrar solo los primeros y últimos caracteres por seguridad
-          if [ -n "$TURSO_DATABASE_URL" ]; then
-            echo "TURSO_DATABASE_URL (parcial): ${TURSO_DATABASE_URL:0:10}...${TURSO_DATABASE_URL: -10}"
-          fi
-          
-          if [ -n "$TURSO_AUTH_TOKEN" ]; then
-            echo "TURSO_AUTH_TOKEN (parcial): ${TURSO_AUTH_TOKEN:0:5}...${TURSO_AUTH_TOKEN: -5}"
-          fi
-        env:
-          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-
-
-      - name: Run tests
-        run: npm run test:ci || echo "Tests skipped - not configured"  # ← Esto evita el error
-        env:
-          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
-
   build-and-push:
-    needs: test
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
     permissions:
       contents: read
       packages: write
@@ -86,7 +42,6 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
-
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -112,10 +67,11 @@ jobs:
         with:
           name: image-tag
           path: image_tag.txt
-  
+
   redeploy:
     needs: build-and-push
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     steps:
       - name: Download image tag artifact
@@ -131,55 +87,16 @@ jobs:
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           echo "📦 Image a desplegar: $IMAGE_TAG"
 
+      - name: Install Koyeb CLI
+        run: |
+          curl -L https://github.com/koyeb/koyeb-cli/releases/download/v5.7.0/koyeb-cli_5.7.0_linux_amd64.tar.gz | tar -xz
+          sudo mv koyeb /usr/local/bin/
+          sudo chmod +x /usr/local/bin/koyeb
+
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-
-      - name: Install Koyeb CLI
-        run: |
-            curl -L https://github.com/koyeb/koyeb-cli/releases/download/v5.7.0/koyeb-cli_5.7.0_linux_amd64.tar.gz | tar -xz
-            sudo mv koyeb /usr/local/bin/
-            sudo chmod +x /usr/local/bin/koyeb
-
-      - name: Install jq (if not already available)
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Redeploy service
-        run: |
-            koyeb service redeploy "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" --token "${{ secrets.KOYEB_API_TOKEN }}"
-            echo "✅ Redeploy iniciado para: ${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}"
-
-      - name: Wait and check deployment status
-        run: |
-          echo "🕐 Esperando para verificar estado del despliegue..."
-          sleep 30
-          
-          # Check deployment status with retries
-          max_attempts=10
-          attempt=1
-          
-          while [ $attempt -le $max_attempts ]; do
-            echo "Intento $attempt de $max_attempts..."
-            
-            status=$(koyeb service get "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" --token "${{ secrets.KOYEB_API_TOKEN }}" -o json | jq -r '.status' 2>/dev/null || echo "UNKNOWN")
-            
-            if [ "$status" = "HEALTHY" ]; then
-              echo "✅ Despliegue completado exitosamente - Estado: $status"
-              exit 0
-            elif [ "$status" = "UNHEALTHY" ]; then
-              echo "❌ Despliegue falló - Estado: $status"
-              exit 1
-            else
-      - name: Install Koyeb CLI
-        run: |
-            curl -L https://github.com/koyeb/koyeb-cli/releases/download/v5.7.0/koyeb-cli_5.7.0_linux_amd64.tar.gz | tar -xz
-            sudo mv koyeb /usr/local/bin/
-            sudo chmod +x /usr/local/bin/koyeb
-
-      - name: Install jq (if not already available)
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-            - name: Update Koyeb service with new image
+      - name: Update Koyeb service with new image
         run: |
           echo "🔄 Actualizando servicio con la imagen: ${{ steps.image-tag.outputs.IMAGE_TAG }}"
           

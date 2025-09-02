@@ -119,18 +119,6 @@ jobs:
             echo "SKIP_REDEPLOY=false" >> $GITHUB_ENV
           fi
 
-      - name: Update service image (si es necesario)
-        if: env.SKIP_REDEPLOY == 'false'
-        run: |
-          echo "🚀 Actualizando la imagen del servicio..."
-          
-          # Primero actualizar la imagen del servicio
-          koyeb service update "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" \
-            --token "${{ secrets.KOYEB_API_TOKEN }}" \
-            --image "${{ steps.image-tag.outputs.IMAGE_TAG }}"
-          
-          echo "✅ Imagen del servicio actualizada"
-
       - name: Redeploy service (si es necesario)
         if: env.SKIP_REDEPLOY == 'false'
         run: |

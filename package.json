@@ -5,7 +5,7 @@
     "dev": "ts-node src/index.ts",
     "build": "tsc",
     "clean": "rm -rf dist",
-    "start": "node dist/src/index.js"
+    "start": "ts-node src/index.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.15.14",

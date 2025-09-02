@@ -3,22 +3,27 @@ import swaggerUi from 'swagger-ui-express';
 import { LoginUseCase } from '../../application/use-cases/login.use-case';
 import { AuthController } from './controllers/auth.controller';
 import { UserRepository } from '../../infraestructure/persistence/repositories/user.repository';
-import { Database } from '../../infraestructure/persistence/database/database';
+//import { TursoClient } from '../../infraestructure/persistence/database/turso.client';
+//import { DIContainer } from '../../infraestructure/config/di.container';
 import { swaggerSpec } from './docs/swagger.config';
+
 
 export class Server {
   private app: express.Application;
   private port: number;
 
   constructor(port: number = 3000) {
+    
     this.app = express();
     this.port = port;
+    
     this.setupMiddleware();
     this.setupRoutes();
     this.setupSwagger();
   }
 
   private setupMiddleware(): void {
+    
     this.app.use(express.json());
   }
 
@@ -50,7 +55,6 @@ export class Server {
 
   public async start(): Promise<void> {
     try {
-      await Database.connect();
       
       this.app.listen(this.port, () => {
         console.log(`🚀 Servidor ejecutándose en http://localhost:${this.port}`);

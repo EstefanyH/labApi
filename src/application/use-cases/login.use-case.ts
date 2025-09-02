@@ -10,8 +10,8 @@ export interface LoginResponse {
   message: string;
   user?: {
     id: string;
-    email: string;
-    name: string;
+    username: string;
+    password: string;
   };
 }
 
@@ -35,8 +35,8 @@ export class LoginUseCase {
       message: 'Login exitoso',
       user: {
         id: user.id,
-        email: user.email,
-        name: user.name
+        username: user.username,
+        password: user.password
       }
     };
   }

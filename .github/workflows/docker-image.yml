@@ -53,6 +53,7 @@ jobs:
       - name: Get latest image tag
         id: get-image-tag
         run: |
+          # Obtener el tag más reciente basado en timestamp
           LATEST_TAG=$(echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | grep -E 'sha-[0-9]{14}' | head -n 1)
           echo "LATEST_TAG=$LATEST_TAG" >> $GITHUB_OUTPUT
           echo "🆕 Image tag: $LATEST_TAG"
@@ -96,29 +97,53 @@ jobs:
       - name: Install jq
         run: sudo apt-get update && sudo apt-get install -y jq
 
-      - name: Get current service definition
+      - name: Get current service details
         run: |
           koyeb service get "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" \
             --token "${{ secrets.KOYEB_API_TOKEN }}" \
-            -o yaml > service_current.yaml
-          echo "📋 Definición actual del servicio obtenida"
+            -o json > service_info.json
+          echo "📋 Información del servicio obtenida"
 
-      - name: Update service definition with new image
+      - name: Verify service is using correct image
         run: |
-          # Actualizar la imagen en el archivo YAML
-          yq e ".definition.docker.image = \"${{ steps.image-tag.outputs.IMAGE_TAG }}\"" service_current.yaml > service_updated.yaml
-          echo "🔄 Imagen actualizada en la definición del servicio"
-
-      - name: Update Koyeb service
-        run: |
-          echo "🚀 Actualizando servicio con nueva imagen..."
+          CURRENT_IMAGE=$(jq -r '.definition.docker.image' service_info.json)
+          echo "📷 Imagen actual: $CURRENT_IMAGE"
+          echo "🎯 Imagen nueva: ${{ steps.image-tag.outputs.IMAGE_TAG }}"
           
-          # Sintaxis CORRECTA para actualizar la imagen
+          # Verificar si ya está usando la imagen correcta
+          if [ "$CURRENT_IMAGE" = "${{ steps.image-tag.outputs.IMAGE_TAG }}" ]; then
+            echo "✅ El servicio ya está usando la imagen más reciente"
+            echo "SKIP_REDEPLOY=true" >> $GITHUB_ENV
+          else
+            echo "🔄 El servicio necesita actualización"
+            echo "SKIP_REDEPLOY=false" >> $GITHUB_ENV
+          fi
+
+      - name: Update service image (si es necesario)
+        if: env.SKIP_REDEPLOY == 'false'
+        run: |
+          echo "🚀 Actualizando la imagen del servicio..."
+          
+          # Primero actualizar la imagen del servicio
+          koyeb service update "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" \
+            --token "${{ secrets.KOYEB_API_TOKEN }}" \
+            --image "${{ steps.image-tag.outputs.IMAGE_TAG }}"
+          
+          echo "✅ Imagen del servicio actualizada"
+
+      - name: Redeploy service (si es necesario)
+        if: env.SKIP_REDEPLOY == 'false'
+        run: |
+          echo "🚀 Iniciando redeploy del servicio..."
+          
+          # Ahora hacer redeploy para aplicar los cambios
           koyeb service redeploy "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" \
-          --token "${{ secrets.KOYEB_API_TOKEN }}"
+            --token "${{ secrets.KOYEB_API_TOKEN }}"
+          
           echo "✅ Redeploy iniciado con la nueva imagen"
 
-      - name: Wait for deployment to complete
+      - name: Wait for deployment to complete (si se hizo redeploy)
+        if: env.SKIP_REDEPLOY == 'false'
         run: |
           echo "⏳ Esperando a que el despliegue se complete..."
           sleep 30
@@ -163,7 +188,11 @@ jobs:
 
       - name: Notify deployment status
         run: |
-          echo "🚀 Proceso de despliegue completado"
+          if [ "$SKIP_REDEPLOY" = "true" ]; then
+            echo "✅ No se necesitó redeploy - El servicio ya estaba actualizado"
+          else
+            echo "🚀 Proceso de despliegue completado"
+          fi
           echo "Servicio: ${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}"
-          echo "Imagen desplegada: ${{ steps.image-tag.outputs.IMAGE_TAG }}"
+          echo "Imagen actual: ${{ steps.image-tag.outputs.IMAGE_TAG }}"
           echo "📅 Timestamp: $(date)"

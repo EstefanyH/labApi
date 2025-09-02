@@ -1,13 +1,15 @@
 {
-    "compilerOptions": {
-      "esModuleInterop": true,
-      "target": "ES2020",
-      "module": "CommonJS",
-      "outDir": "dist",
-      "rootDir": "src",
-      "strict": true,
-      "skipLibCheck": true
-    },
-    "include": ["src"]
-  }
-  
+  "compilerOptions": {
+    "target": "ES2020",                       // Genera JS moderno
+    "module": "commonjs",                     // Para Node.js (si usas ESM -> "nodenext")
+    "rootDir": "src",                         // Tu carpeta de entrada
+    "outDir": "dist",                         // Carpeta de salida (compilados JS)
+    "strict": true,                           // Habilita chequeos estrictos
+    "esModuleInterop": true,                  // Mejor compatibilidad con require/import
+    "skipLibCheck": true,                     // Ignora chequeo de .d.ts
+    "forceConsistentCasingInFileNames": true, // Evita problemas en Linux/Windows
+    "sourceMap": false                        // Puedes poner true si quieres debugging
+  },
+  "include": ["src/**/*"],                    // Archivos TS de entrada
+  "exclude": ["node_modules", "dist"]         // Evita bucles
+}

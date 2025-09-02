@@ -53,13 +53,19 @@ jobs:
         with:
           node-version: 18
 
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compile TypeScript
+        run: npx tsc
+
       - name: Install obfuscator
         run: npm install -g javascript-obfuscator
 
       - name: Obfuscate source code
         run: |
-          mkdir -p dist
-          javascript-obfuscator src --output dist --compact true --control-flow-flattening true
+          mkdir -p dist-obf
+          javascript-obfuscator dist --output dist-obf --compact true --control-flow-flattening true
 
       - name: Upload dist artifacts
         uses: actions/upload-artifact@v4

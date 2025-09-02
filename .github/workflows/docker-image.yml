@@ -114,11 +114,9 @@ jobs:
           echo "🚀 Actualizando servicio con nueva imagen..."
           
           # Sintaxis CORRECTA para actualizar la imagen
-          koyeb service update "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" \
-            --token "${{ secrets.KOYEB_API_TOKEN }}" \
-            -s "docker.image=${{ steps.image-tag.outputs.IMAGE_TAG }}"
-          
-          echo "✅ Servicio actualizado exitosamente"
+          koyeb service redeploy "${{ secrets.KOYEB_BACKEND_SERVICE_NAME }}" \
+          --token "${{ secrets.KOYEB_API_TOKEN }}"
+          echo "✅ Redeploy iniciado con la nueva imagen"
 
       - name: Wait for deployment to complete
         run: |

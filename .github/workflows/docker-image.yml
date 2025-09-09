@@ -1,79 +1,130 @@
-name: Build and Push Docker Image
+permissions:
+  contents: read
+  packages: write
+  
+name: CI Pipeline
 
 on:
   push:
-    branches: [ main, master, develop ]
-    tags: [ 'v*.*.*' ]
-  pull_request:
-    branches: [ main, master, develop ]
-
-env:
-  REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+    branches:
+      - develop
+  workflow_dispatch: # Para ejecutarlo manualmente
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v4
         with:
-          node-version: '18'
-          cache: 'npm'
+          fetch-depth: 0 # Equivalente a GIT_DEPTH=0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
-      - name: Run tests
-        run: npm test
-        env:
-          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+      - name: Build project
+        run: |
+          echo "Building..."
+          mkdir build
 
-  build-and-push:
-    needs: test
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-artifacts
+          path: |
+            build/
+            Dockerfile
+
+  tester:
     runs-on: ubuntu-latest
-    if: github.event_name != 'pull_request'
-    permissions:
-      contents: read
-      packages: write
-
+    needs: build
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: build-artifacts
+      - name: Run tests
+        run: echo "Tester..."
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+  obfuscate:
+    runs-on: ubuntu-latest
+    needs: tester
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compile TypeScript
+        run: npx tsc
+
+      - name: Install obfuscator
+        run: npm install -g javascript-obfuscator
+
+      - name: Obfuscate source code
+        run: |
+          mkdir -p dist-obf
+          javascript-obfuscator dist --output dist-obf --compact true --control-flow-flattening true
+
+      - name: Upload dist artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-artifacts
+          path: dist/
+
+  dockerize:
+    runs-on: ubuntu-latest
+    needs: obfuscate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download dist artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist-artifacts
+          path: ./dist
 
       - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v2
         with:
-          registry: ${{ env.REGISTRY }}
+          registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Extract metadata for Docker
-        id: meta
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: |
-            type=schedule
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=sha
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
           context: .
           push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          tags: ghcr.io/estefanyh/labapi:latest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: dockerize
+    steps:
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y curl tar
+
+      - name: Download Koyeb CLI
+        run: |
+          curl -L -o koyeb-cli.tar.gz "https://github.com/koyeb/koyeb-cli/releases/download/v5.4.1/koyeb-cli_5.4.1_linux_amd64.tar.gz"
+          tar -xzf koyeb-cli.tar.gz
+          sudo mv koyeb /usr/local/bin/koyeb
+          chmod +x /usr/local/bin/koyeb
+
+      - name: Configure Koyeb
+        run: |
+          mkdir -p ~/.koyeb
+          echo "access_token: ${{ secrets.KOYEB_API_TOKEN }}" > ~/.koyeb.yaml
+          koyeb version
+
+      - name: Deploy to Koyeb
+        run: |
+          echo "📢 Iniciando despliegue en Koyeb..."
+          koyeb service redeploy "vivid-carrie/apisinau-nodejs" --token "${{ secrets.KOYEB_API_TOKEN }}"
+          echo "✅ Despliegue exitoso en Koyeb 🚀"

@@ -1,6 +1,5 @@
 import { Client, createClient, ResultSet } from '@libsql/client';
 import environment from '../../../shared/constants/environment';
-//import { getDatabaseConfig } from './database.config';
  
 const db: Client = createClient({
     url: environment.datbaseUrl,

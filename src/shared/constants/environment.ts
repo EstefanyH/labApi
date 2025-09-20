@@ -5,8 +5,8 @@ dotenv.config();
 const environment = {
   port: process.env.PORT || '3000',
   jwtSecret: process.env.JWT_SECRET || 'default-secret',
-  datbaseUrl: process.env.TURSO_DEVELOPMENT_URL || 'libsql://taxi-dev-hache.aws-us-east-1.turso.io',
-  databaseToken: process.env.TURSO_DEVELOPMENT_TOKEN  || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE3NzU0MTAwNjAsImlhdCI6MTc0Mzg3NDA2MCwiaWQiOiI4ZmE3NmI0OS1iOTZkLTQ2ODEtODdmMC1hZjE3ZTkwYzFiMDkiLCJyaWQiOiJmMmYxNjRjZC1jODNkLTRmOTMtOTlhNy0xM2VjNDQ5NzljZGIifQ.Z_tX82SlK0D5WMMWiLjZIGC0Gx3gx7336-FC1pUnK3o-0vKmijYylCMBc-Pp2EA_Wnkgv6jTDTeQODtlDwMrBw',
+  datbaseUrl: process.env.TURSO_DEVELOPMENT_URL || 'libsql://lab-dev-hache.aws-eu-west-1.turso.io',
+  databaseToken: process.env.TURSO_DEVELOPMENT_TOKEN  || 'eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJhIjoicnciLCJleHAiOjE3ODc3MTk1ODksImlhdCI6MTc1NjE4MzU4OSwiaWQiOiJjYTRmOTliYS0zZDI2LTRjODUtOTQ2Zi0yNGYzNzQ5MjYzYzQiLCJyaWQiOiI2YTIwNDBjNS02NTk2LTQ0ODItYWQ1Ni0xNmZkODA2ODQ0ZjUifQ.6RibLqFqD-A30wxtOZ77SZ7Sflhxjga3h-7L0FbYWuj5HpZUYIZbk3L8VPszDSu1P6oSeplsA_mhrstBlP1kCg',
   nodeEnv: process.env.NODE_ENV || 'development',
 };
 

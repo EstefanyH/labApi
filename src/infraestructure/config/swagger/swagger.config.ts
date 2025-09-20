@@ -5,6 +5,20 @@ import { swaggerSchemas } from './swagger.schemas';
 import { swaggerPaths } from './swagger.paths';
 import { swaggerResponses } from './swagger.responses';
 
+const getServerUrl = () => {
+  const environment = process.env.NODE_ENV || 'developement';
+  
+  if (environment === 'production') {
+    return 'https://vivid-carrie-hache-b27df325.koyeb.app/';
+  } else if (environment === 'staging') {
+    return 'https://tu-staging-url.koyeb.app/'; // Opcional: para staging
+  } else if (environment === 'developement') {
+    return 'https://vivid-carrie-hache-b27df325.koyeb.app/'; // Opcional: para staging
+  } else {
+    return 'http://localhost:3000';
+  }
+};
+
 const swaggerDefinition = {
   openapi: '3.0.0',
   info: {
@@ -13,9 +27,9 @@ const swaggerDefinition = {
     description: 'API con Arquitectura Hexagonal y Swagger',
   },
   servers: [
-    {
-      url: 'http://localhost:3000',
-      description: 'Servidor local'
+     {
+      url: getServerUrl(),
+      description: `Servidor ${process.env.NODE_ENV || 'development'}`
     }
   ],
   tags: swaggerTags,

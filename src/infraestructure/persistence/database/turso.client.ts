@@ -1,4 +1,3 @@
-//import { Client, createClient, ResultSet } from '@libsql/client';
 import { Client, createClient, ResultSet } from '@libsql/client/web'; // ← Cliente HTTP
 
 import environment from '../../../shared/constants/environment';

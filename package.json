@@ -7,6 +7,7 @@
     "clean": "rm -rf dist",
     "start": "ts-node src/index.ts"
   },
+  "postinstall": "npm rebuild @libsql/client",
   "dependencies": {
     "@libsql/client": "^0.15.14",
     "cors": "^2.8.5",

@@ -103,9 +103,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-            platforms: linux/amd64
-            build-args: |
-              LIBSQL_CLIENT_PLATFORM=linux-x64-gnu
+          platforms: linux/amd64  # ← Misma indentación que 'context'
+          build-args: |           # ← Misma indentación que 'context'
+            LIBSQL_CLIENT_PLATFORM=linux-x64-gnu
           push: true
           tags: ghcr.io/estefanyh/labapi:latest
 

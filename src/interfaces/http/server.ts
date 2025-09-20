@@ -1,30 +1,34 @@
 import express from 'express';
 import swaggerUi from 'swagger-ui-express';
-import { LoginUseCase } from '../../application/use-cases/login.use-case';
-import { AuthController } from './controllers/auth.controller';
-import { UserRepository } from '../../infraestructure/persistence/repositories/user.repository';
-//import { TursoClient } from '../../infraestructure/persistence/database/turso.client';
-//import { DIContainer } from '../../infraestructure/config/di.container';
-import { swaggerSpec } from './docs/swagger.config';
-
+import { swaggerSpec } from '../../infraestructure/config/swagger/swagger.config';
+import { ProfileRepository } from '../../infraestructure/persistence/repositories/profile.repository';
+import { ProfileServiceImpl } from '../../domain/servicesImpl/profile.service.impl';
+import { ProfileController } from '../../infraestructure/controllers/profile.controller';
+import { profileRoute } from '../../infraestructure/routes/profile.router';
 
 export class Server {
-  private app: express.Application;
-  private port: number;
+  private app = express();
 
-  constructor(port: number = 3000) {
-    
-    this.app = express();
-    this.port = port;
-    
+  constructor() {
     this.setupMiddleware();
+    this.setupSwagger(); // ← DESCOMENTADO
+    this.setupDependencies();
     this.setupRoutes();
-    this.setupSwagger();
+  }
+
+  private setupDependencies(){
+    const profileRepository = new ProfileRepository();
+    const profileService = new ProfileServiceImpl(profileRepository);
+    const profileController = new ProfileController(profileService); // ← Corregido
+
+    const profileRoutes = profileRoute(profileController); // ← Variable correcta
+
+    this.app.use('/api/profile', profileRoutes); // ← Variable correcta
   }
 
   private setupMiddleware(): void {
-    
     this.app.use(express.json());
+    this.app.use(express.urlencoded({extended: true}));
   }
 
   private setupSwagger(): void {
@@ -33,34 +37,43 @@ export class Server {
     
     // Endpoint para obtener el spec JSON
     this.app.get('/api-docs.json', (req, res) => {
-      res.setHeader('Content-Type', 'application/json');
-      res.send(swaggerSpec);
+      res.json(swaggerSpec);
     });
   }
 
   private setupRoutes(): void {
-    // Inicializar dependencias
-    const userRepository = new UserRepository();
-    const loginUseCase = new LoginUseCase(userRepository);
-    const authController = new AuthController(loginUseCase);
+    this.app.get("/health", (req, res) => {
+      res.json({ 
+        status: "OK", 
+        timestamp: new Date().toISOString(),
+        service: "user-service",
+        docs: "/api-docs" // ← Agregar link para referencia
+      });
+    });
 
-    // Rutas
-    this.app.post('/api/auth/login', (req, res) => authController.login(req, res));
-    
-    // Health check
-    this.app.get('/health', (req, res) => {
-      res.json({ status: 'OK', message: 'Servidor funcionando' });
+    // Manejo de rutas no encontradas (DEBE IR AL FINAL)
+    this.app.use("*", (req, res) => {
+      res.status(404).json({ 
+        error: "Route not found",
+        path: req.originalUrl,
+        availableRoutes: [
+          "/health",
+          "/api-docs",
+          "/api-docs.json",
+          "/api/profile"
+        ]
+      });
     });
   }
 
-  public async start(): Promise<void> {
+  public start(port: number) {
     try {
-      
-      this.app.listen(this.port, () => {
-        console.log(`🚀 Servidor ejecutándose en http://localhost:${this.port}`);
-        console.log(`📚 Swagger UI: http://localhost:${this.port}/api-docs`);
-        console.log(`🔐 Login: POST http://localhost:${this.port}/api/auth/login`);
-        console.log(`❤️ Health: GET http://localhost:${this.port}/health`);
+      this.app.listen(port, () => {
+        console.log(`🚀 Servidor ejecutándose en http://localhost:${port}`);
+        console.log(`📚 Swagger UI: http://localhost:${port}/api-docs`);
+        console.log(`📋 Swagger JSON: http://localhost:${port}/api-docs.json`);
+        console.log(`👤 Profile API: http://localhost:${port}/api/profile`);
+        console.log(`❤️ Health: http://localhost:${port}/health`);
       });
     } catch (error) {
       console.error('Error al iniciar servidor:', error);

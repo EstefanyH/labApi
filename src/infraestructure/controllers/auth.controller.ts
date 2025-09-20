@@ -8,7 +8,8 @@ import { LoginUseCase } from '../../application/use-cases/login.use-case';
  *   description: Autenticación de usuarios
  */
 export class AuthController {
-  constructor(private loginUseCase: LoginUseCase) {}
+  constructor(
+    private loginUseCase: LoginUseCase) {}
 
   /**
    * @swagger
@@ -47,5 +48,5 @@ export class AuthController {
         message: 'Error interno del servidor'
       });
     }
-  }
+  } 
 }

@@ -1,10 +1,10 @@
 import { Request, Response } from 'express';
-import { LoginUseCase } from '../../../application/use-cases/login.use-case';
- 
+import { LoginUseCase } from '../../application/use-cases/login.use-case';
+import { ProfileUseCase } from '../../application/use-cases/profile.use-case';
 /**
  * @swagger
  * tags:
- *   name: Auth
+ *   name: auth
  *   description: Autenticación de usuarios
  */
 export class AuthController {
@@ -15,7 +15,7 @@ export class AuthController {
    * /api/auth/login:
    *   post:
    *     summary: Iniciar sesión
-   *     tags: [Auth]
+   *     tags: [auth]
    *     requestBody:
    *       required: true
    *       content:
@@ -41,6 +41,19 @@ export class AuthController {
       const result = await this.loginUseCase.execute({ email, password });
       
       res.status(result.success ? 200 : 401).json(result);
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        message: 'Error interno del servidor'
+      });
+    }
+  }
+
+  async create(req: Request, res: Response): Promise<void> {
+    try{
+      const { name, lastname, type, number, } = req.body;
+      const result = await this.create
+     
     } catch (error) {
       res.status(500).json({
         success: false,

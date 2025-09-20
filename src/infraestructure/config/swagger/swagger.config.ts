@@ -4,15 +4,17 @@ import { swaggerTags } from './swagger.tags';
 import { swaggerSchemas } from './swagger.schemas';
 import { swaggerPaths } from './swagger.paths';
 import { swaggerResponses } from './swagger.responses';
+import  Environment   from '../../../shared/constants/environment';
 
 const getServerUrl = () => {
-  const environment = process.env.NODE_ENV || 'developement';
-  
+  const environment = Environment.nodeEnv || 'local'; // || 'developement';
+  console.log(Environment.nodeEnv);
+
   if (environment === 'production') {
     return 'https://vivid-carrie-hache-b27df325.koyeb.app/';
   } else if (environment === 'staging') {
     return 'https://tu-staging-url.koyeb.app/'; // Opcional: para staging
-  } else if (environment === 'developement') {
+  } else if (environment === 'development') {
     return 'https://vivid-carrie-hache-b27df325.koyeb.app/'; // Opcional: para staging
   } else {
     return 'http://localhost:3000';
@@ -29,7 +31,7 @@ const swaggerDefinition = {
   servers: [
      {
       url: getServerUrl(),
-      description: `Servidor ${process.env.NODE_ENV || 'development'}`
+      description: `Servidor ${process.env.NODE_ENV || 'local'}`
     }
   ],
   tags: swaggerTags,

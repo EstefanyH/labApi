@@ -19,7 +19,7 @@ async function verifyConnection(): Promise<void> {
         });
         
         console.log('✅ Conexión exitosa a Turso');
-        console.log('📊 Tablas en la base de datos:', result.rows.map(row => row.name));
+        //console.log('📊 Tablas en la base de datos:', result.rows.map(row => row.name));
         
     } catch (error) {
         console.error('❌ Error de conexión a Turso:');

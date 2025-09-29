@@ -1,5 +1,5 @@
 import { Profile } from "../models/profile.models";
-import { User } from "../models/uer.models";
+import { User } from "../models/user.models";
 
 export interface ProfileRepositoryPort {
   save(model: Profile): Promise<Profile>;

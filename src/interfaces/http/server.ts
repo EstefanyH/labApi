@@ -5,7 +5,10 @@ import { ProfileRepository } from '../../infraestructure/persistence/repositorie
 import { ProfileServiceImpl } from '../../domain/servicesImpl/profile.service.impl';
 import { ProfileController } from '../../infraestructure/controllers/profile.controller';
 import { profileRoute } from '../../infraestructure/routes/profile.router';
-
+import { AuthRepository } from '../../infraestructure/persistence/repositories/user.repository';
+import { AuthServiceImpl } from '../../domain/servicesImpl/auth.service.impl';
+import { AuthController } from '../../infraestructure/controllers/auth.controller';
+import { authRoute } from '../../infraestructure/routes/auth.router';
 export class Server {
   private app = express();
 
@@ -20,10 +23,15 @@ export class Server {
     const profileRepository = new ProfileRepository();
     const profileService = new ProfileServiceImpl(profileRepository);
     const profileController = new ProfileController(profileService); // ← Corregido
-
     const profileRoutes = profileRoute(profileController); // ← Variable correcta
 
+    const authRepository = new AuthRepository();
+    const authService = new AuthServiceImpl(authRepository);
+    const authController = new AuthController(authService);
+    const authRoutes = authRoute(authController); 
+
     this.app.use('/api/profile', profileRoutes); // ← Variable correcta
+    this.app.use('/api/auth', authRoutes);
   }
 
   private setupMiddleware(): void {

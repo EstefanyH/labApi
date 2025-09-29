@@ -1,16 +1,16 @@
- import { User } from '../../../domain/models/uer.models';
-import { UserRepositoryPort } from '../../../domain/ports/user.repository.port';
+ import { User } from '../../../domain/models/user.models';
+import { AuthRepositoryPort } from '../../../domain/ports/auth.repository';
 import { db } from '../database/turso.client';
  
-export class UserRepository implements UserRepositoryPort {
+export class AuthRepository implements AuthRepositoryPort {
   
   private client:any;
   
-  async findByEmail(email: string): Promise<User | null> {
+  async find(username: string, password: string): Promise<User | null> {
     try{
       const result = await db.execute(
-        'select * from users where username = ?',
-        [email]
+        'select * from users where username = ? and password = ?',
+        [username, password]
       );
       const user = result.rows[0] as unknown as User;
       return user ?? null;
@@ -19,7 +19,7 @@ export class UserRepository implements UserRepositoryPort {
       throw error
     } 
   }
-
+/*
   async create(model: User): Promise<number | null> {
     try{
       const result = await db.execute(

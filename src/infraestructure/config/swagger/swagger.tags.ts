@@ -1,7 +1,11 @@
 export const swaggerTags = [
   {
-    name: 'Profiles',
+    name: 'Profile',
     description: 'Gestión de perfiles de usuario'
+  },
+  {
+    name: 'Auth',
+    description: 'Validación e inicio de sesión de usuarios'
   },
   {
     name: 'Health',

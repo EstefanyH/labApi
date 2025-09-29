@@ -1,8 +1,8 @@
-export const swaggerPaths = {
+export const swaggerPaths = {  
   '/api/profile': {
     post: {
       summary: 'Crear un nuevo perfil',
-      tags: ['Profiles'],
+      tags: ['Profile'],
       requestBody: {
         required: true,
         content: {
@@ -38,7 +38,7 @@ export const swaggerPaths = {
   '/api/profile/{id}': {
     get: {
       summary: 'Obtener un perfil por ID',
-      tags: ['Profiles'],
+      tags: ['Profile'],
       parameters: [
         {
           name: 'id',
@@ -86,7 +86,7 @@ export const swaggerPaths = {
     // UPDATE PROFILE - PUT
     put: {
       summary: 'Actualizar un perfil existente',
-      tags: ['Profiles'],
+      tags: ['Profile'],
       parameters: [
         {
           name: 'id',
@@ -156,7 +156,7 @@ export const swaggerPaths = {
     // DELETE PROFILE - DELETE
     delete: {
       summary: 'Eliminar un perfil',
-      tags: ['Profiles'],
+      tags: ['Profile'],
       parameters: [
         {
           name: 'id',
@@ -201,27 +201,73 @@ export const swaggerPaths = {
       }
     }
   }, // ← CIERRE CORRECTO del objeto /api/profile/{id}
+  
+  '/api/auth/login': {
+    post: {
+      summary: 'Inicio de sesión de usuario',
+      tags: ['Auth'],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['username', 'password'],
+              properties: {
+                username: { type: 'string', example: '41111111' },
+                password: { type: 'string', example: '41111111' },
+              }
+            }
+          }
+        }
+      },
+      responses: {
+        '201': {
+          description: 'Perfil creado exitosamente',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/ApiResponse' }
+            }
+          }
+        },
+        '400': { $ref: '#/components/responses/BadRequest' },
+        '500': { $ref: '#/components/responses/ServerError' }
+      }
+    }
+  },
 
   '/health': {
     get: {
       summary: 'Health check del sistema',
       tags: ['Health'],
       responses: {
-        '200': {
-          description: 'Sistema funcionando correctamente',
+        '204': {
+          description: 'Perfil eliminado exitosamente',
           content: {
             'application/json': {
-              schema: {
-                type: 'object',
-                properties: {
-                  status: { type: 'string', example: 'OK' },
-                  timestamp: { type: 'string', format: 'date-time' },
-                  service: { type: 'string', example: 'user-service' }
-                }
+              schema: { 
+                $ref: '#/components/schemas/ApiResponse' 
               }
             }
           }
-        }
+        },
+        '400': {
+          description: 'ID inválido',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/Error' }
+            }
+          }
+        },
+        '404': {
+          description: 'Perfil no encontrado',
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/Error' }
+            }
+          }
+        },
+        '500': { $ref: '#/components/responses/ServerError' }
       }
     }
   }
